@@ -2,13 +2,13 @@
 # Common control for SSH, Status, Reboot, and Shutdown
 
 # Central control for a single machine
-# Usage: mac <number> [status|reboot|down]
+# Usage: mac <number> [status|sleep|reboot|down]
 function mac
     set id $argv[1]
     set action $argv[2]
 
     if test -z $id
-        echo "Usage: mac <number> [status|reboot|down]"
+        echo "Usage: mac <number> [status|sleep|reboot|down]"
         return 1
     end
 
@@ -20,6 +20,8 @@ function mac
             ssh $LAB_USER@$host.$LAB_DOMAIN
         case status
             ssh -o ConnectTimeout=5 $LAB_USER@$host.$LAB_DOMAIN uptime
+        case sleep
+            ssh -t $LAB_USER@$host.$LAB_DOMAIN sudo pmset sleepnow
         case reboot
             ssh -t $LAB_USER@$host.$LAB_DOMAIN sudo reboot
         case down
@@ -30,11 +32,11 @@ function mac
 end
 
 # Parallel lab-wide control
-# Usage: mac-all {status|reboot|down}
+# Usage: mac-all {status|sleep|reboot|down}
 function mac-all
     set action $argv[1]
     if test -z "$action"
-        echo "Usage: mac-all {status|reboot|down}"
+        echo "Usage: mac-all {status|sleep|reboot|down}"
         return 1
     end
 
@@ -70,6 +72,8 @@ function mac-all
 
     for host in $MACHINES
         switch "$action"
+            case sleep
+                ssh -o ConnectTimeout=5 $LAB_USER@$host.$LAB_DOMAIN "sudo pmset sleepnow" >/dev/null 2>&1 &
             case reboot
                 ssh -o ConnectTimeout=5 $LAB_USER@$host.$LAB_DOMAIN "sudo reboot" >/dev/null 2>&1 &
             case down

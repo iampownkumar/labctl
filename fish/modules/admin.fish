@@ -25,7 +25,7 @@ function mac-sudo-setup
     # 1. Create a temporary file with the new rule
     # 2. Use 'visudo -cf' to check if the file is syntactically correct
     # 3. Only if valid, move it into the protected /etc/sudoers.d/ directory
-    ssh -t $LAB_USER@$host.$LAB_DOMAIN "
+    ssh -o ConnectTimeout=5 -t $LAB_USER@$host.$LAB_DOMAIN "
         echo '$LAB_USER ALL=(ALL) NOPASSWD: ALL' > /tmp/sudoer_temp && \
         sudo visudo -cf /tmp/sudoer_temp && \
         sudo mv /tmp/sudoer_temp /etc/sudoers.d/lab-admin && \

@@ -12,5 +12,9 @@ source $BASE/modules/software.fish
 source $BASE/modules/notify.fish
 source $BASE/modules/admin.fish
 source $BASE/modules/emergency.fish
+source $BASE/modules/network.fish
+source $BASE/modules/screens.fish
+
+
 
 
