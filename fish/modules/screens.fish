@@ -66,3 +66,57 @@ function mac-present
     wait
     echo "✅ Presentation pushed!"
 end
+
+# Force a single student Mac to open a view to the Admin's Screen (Presentation Mode)
+# Usage: mac-present-host <number>
+function mac-present-host
+    set id $argv[1]
+    if test -z "$id"
+        echo "Usage: mac-present-host <number>"
+        return 1
+    end
+    
+    set num (string pad -w 3 -c 0 $id)
+    set host mac-$num
+
+    set admin_ip (ipconfig getifaddr en0)
+    if test -z "$admin_ip"
+        set admin_ip (ipconfig getifaddr en1)
+    end
+    
+    echo "🚀 Pushing Admin Screen ($admin_ip) to $host..."
+    ssh -o ConnectTimeout=5 $LAB_USER@$host.$LAB_DOMAIN \
+    "open vnc://$admin_ip" >/dev/null 2>&1 &
+    wait
+    echo "✅ Presentation pushed to $host!"
+end
+
+# Stop the Presentation Mode on all student Macs by closing their Screen Sharing app.
+# Usage: mac-stop-present
+function mac-stop-present
+    echo "🛑 Stopping Presentation on all students..."
+    for host in $MACHINES
+        ssh -o ConnectTimeout=5 $LAB_USER@$host.$LAB_DOMAIN \
+        "killall 'Screen Sharing' 2>/dev/null" >/dev/null 2>&1 &
+    end
+    wait
+    echo "✅ Presentation stopped!"
+end
+
+# Stop the Presentation Mode on a single student Mac
+# Usage: mac-stop-present-host <number>
+function mac-stop-present-host
+    set id $argv[1]
+    if test -z "$id"
+        echo "Usage: mac-stop-present-host <number>"
+        return 1
+    end
+    set num (string pad -w 3 -c 0 $id)
+    set host mac-$num
+
+    echo "🛑 Stopping Presentation on $host..."
+    ssh -o ConnectTimeout=5 $LAB_USER@$host.$LAB_DOMAIN \
+    "killall 'Screen Sharing' 2>/dev/null" >/dev/null 2>&1 &
+    wait
+    echo "✅ Presentation stopped on $host!"
+end
