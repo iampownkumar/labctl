@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # 🖥️ labctl
 
@@ -382,5 +382,3 @@ For commercial licensing inquiries, contact: **Pownkumar A** at [Korelium](https
 *If labctl saves you time, give it a ⭐ on GitHub!*
 
 </div>
-
-]]>
