@@ -15,6 +15,7 @@ source $BASE/modules/autologin.fish
 source $BASE/modules/emergency.fish
 source $BASE/modules/network.fish
 source $BASE/modules/screens.fish
+source $BASE/modules/users.fish
 
 
 
