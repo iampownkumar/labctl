@@ -1,296 +1,151 @@
-<div align="center">
-
 # labctl
 
-**Manage 1 to 100+ macOS machines from a single terminal.**
+A Fish shell CLI to manage a Mac lab over SSH — no MDM, no cloud, no agents.
 
-No MDM. No agents. No cloud. No monthly fees. Just SSH.
+## Why I built this
 
----
+I work in a college Mac lab. Multi-system, multi-user, full chaos.
 
-Pownkumar A (Founder of Korelium) · Last updated: May 6, 2026
+Every time there was a new exam session I had to create student accounts on every machine. Every time I needed to install software, I was going machine by machine. Remote login sessions needed to be cleared, users needed to be deleted, machines needed to be rebooted — all manual. All one at a time. 33 Macs.
 
-</div>
+I'm a laser-focused problem solver. When something is wasting my time and a computer could just do it, I can't let it go. So I started writing this — one command at a time, solving the exact thing that annoyed me that day.
 
----
+The design is simple: you change the username and the hostname pattern, and everything else just works. You can block internet, send desktop notifications, reboot everything, turn machines off, create users, delete users — all from your own terminal without touching a single machine physically.
 
-## Why labctl?
-
-If you manage a Mac lab — a school, college, coworking space, or creative studio — you know the pain:
-
-- **Jamf** costs $4–8/device/month ($1,500+/year for 30 Macs)
-- **Mosyle/Kandji** require MDM enrollment, Apple Business Manager, cloud dependency
-- **Ansible** needs YAML expertise and has no Mac-native understanding
-- **Doing it manually** means SSH-ing into 30+ machines one by one
-
-**labctl solves this.** It's a lightweight, Fish shell-based CLI that manages your entire Mac lab over SSH. No agents to install on client machines. No cloud accounts. No subscriptions. It runs entirely on your local network.
-
-### What can it do?
-
-| Feature | Single Machine | All Machines (Parallel) |
-|---|:---:|:---:|
-| **Power** — Reboot, Shutdown, Sleep | `mac 23 reboot` | `mac-all reboot` |
-| **Status** — Online/Offline with uptime | `mac 23 status` | `mac-all status` |
-| **Users** — Create, Delete (secure wipe), List | `mac-user-create 23 student pass` | `mac-all-user-create student pass` |
-| **Software** — Install/Remove via Homebrew | `mac-pkg 23 cask firefox` | `mac-pkg-all cask firefox` |
-| **Homebrew** — Install/Check/Uninstall Homebrew itself | `mac-brew-install 23` | `mac-brew-install-all` |
-| **Auto-Login** — Enable/Disable/Status | `mac-autologin-on 23 pass` | `mac-all-autologin-on pass` |
-| **Screen Monitor** — View student screens live | `mac-monitor 23` | — |
-| **Presentation** — Push your screen to students | `mac-present-host 23` | `mac-present` |
-| **Notifications** — Send alerts to desktops | `mac-notify 23 "Time's up!"` | `mac-all-notify "Time's up!"` |
-| **Audio Alerts** — Play sound + notification | `mac-alert 23 "Submit now"` | `mac-all-alert "Submit now"` |
-| **Network** — Scrape IPs/MACs, Wake-on-LAN | `mac-wake 23` | `mac-all-wake` |
-| **Admin** — Setup passwordless sudo | `mac-sudo-setup 23` | `mac-sudo-setup-all` |
-| **Emergency** — Kill all hanging processes | `mac-kill-all` | — |
-
-> **Design pattern:** Every feature works on a single machine first (`mac-*`), then scales to all machines in parallel (`mac-all-*`). Test on one, deploy to all.
+If you're managing a Mac lab, this will genuinely make your life easier. That's not marketing — that's just what it does for me every day.
 
 ---
 
-## Prerequisites
+## What it does
 
-Before using labctl, you need:
+Every command works on a single machine first, and has an `-all` version that runs across every machine at the same time.
 
-1. **An Admin Mac** — Your machine where you'll run commands from
-2. **Lab Macs** — The machines you want to manage (1 to 100+)
-3. **All Macs on the same local network** (no static IP required — uses `.local` mDNS)
-4. **Fish Shell** installed on the Admin Mac
-5. **SSH access** from Admin Mac to all Lab Macs (key-based auth recommended)
-
-> **Important:** All lab machines must have the **same admin username** (e.g., `labuser`). This is how labctl runs commands in parallel — it SSHs into `labuser@mac-001.local`, `labuser@mac-002.local`, etc. Create this account on every Mac during initial setup.
-
-### What you don't need:
-- Static IP addresses
-- Cloud accounts or internet access
-- MDM enrollment or Apple Business Manager
-- Any software installed on the Lab Macs (beyond macOS defaults)
-- Any monthly subscription
+| What | Single machine | All machines |
+|---|---|---|
+| Power | `mac 23 reboot` | `mac-all reboot` |
+| Status | `mac 23 status` | `mac-all status` |
+| Create user | `mac-user-create 23 student pass` | `mac-all-user-create student pass` |
+| Delete user | `mac-user-delete 23 student` | `mac-all-user-delete student` |
+| Install app | `mac-pkg 23 cask firefox` | `mac-pkg-all cask firefox` |
+| Auto-login on | `mac-autologin-on 23 pass` | `mac-all-autologin-on pass` |
+| View screen | `mac-monitor 23` | — |
+| Present screen | `mac-present-host 23` | `mac-present` |
+| Send notification | `mac-notify 23 "Save your work"` | `mac-all-notify "Lab closing soon"` |
+| Wake machine | `mac-wake 23` | `mac-all-wake` |
 
 ---
 
-## Installation
+## Requirements
 
-### Step 1: Install Fish Shell (Admin Mac only)
+- Your admin Mac where you run commands from
+- All lab Macs on the same local network
+- Fish Shell installed on the admin Mac
+- SSH key access from admin Mac to all lab Macs
+- All lab Macs must have the same admin username (e.g. `labuser`)
+
+---
+
+## Setup
+
+### 1. Install Fish
 
 ```bash
 brew install fish
 ```
 
-### Step 2: Clone labctl
+### 2. Clone labctl
 
 ```bash
-git clone https://github.com/iampownkumar/labctl.git
+git clone https://github.com/korelium-oss/labctl.git
 cd labctl
 ```
 
-### Step 3: Configure Your Lab
+### 3. Set your lab config
 
 Edit `fish/modules/config.fish`:
+
 ```fish
-set -g LAB_USER "your-lab-username"
+set -g LAB_USER "labuser"
 set -g LAB_DOMAIN "local"
 ```
 
 Edit `fish/modules/hostnames.fish`:
+
 ```fish
 set -g MACHINES \
-  mac-001 mac-002 mac-003 mac-004 mac-005 \
-  mac-006 mac-007 mac-008 mac-009 mac-010
+  mac-001 mac-002 mac-003 mac-004 mac-005
 ```
 
-### Step 4: Add to Fish config
+### 4. Load it in your Fish config
 
 Add this to `~/.config/fish/config.fish`:
+
 ```fish
-set -gx LAB_USER "your-lab-username"
-set -gx LAB_DOMAIN "local"
 source /path/to/labctl/fish/init.fish
 ```
 
-### Step 5: Setup SSH Key Authentication
+### 5. Set up SSH key auth
 
 ```fish
 ssh-keygen -t ed25519
-ssh-copy-id your-lab-username@mac-001.local
-ssh-copy-id your-lab-username@mac-002.local
-# repeat for all machines
+ssh-copy-id labuser@mac-001.local
+# repeat for each machine
 ```
 
-### Step 6: Setup Passwordless Sudo
+### 6. Set up passwordless sudo on lab Macs
 
 ```fish
-mac-sudo-setup 1       # test on one machine first
-mac-sudo-setup-all     # then all machines
+mac-sudo-setup 1      # test on one first
+mac-sudo-setup-all    # then all
 ```
 
-### Step 7: Verify
+### 7. Verify
 
 ```fish
 mac-all status
 ```
 
-Expected output:
+You should see something like:
+
 ```
-Checking lab status (parallel, 5s timeout)...
-mac-001 : ONLINE  → 10:23  up 2 days, 5:14, 1 user
-mac-002 : ONLINE  → 10:23  up 2 days, 5:14, 1 user
+mac-001 : ONLINE  → up 2 days
+mac-002 : ONLINE  → up 1 day
 mac-003 : OFFLINE
----------------------------------------------
-ONLINE : 2 | OFFLINE: 1
+------------------------------
+ONLINE: 2 | OFFLINE: 1
 ```
 
 ---
 
-## Usage Guide
-
-### Power Management
-
-```fish
-mac 23 status        # Check uptime of mac-023
-mac 23 reboot        # Reboot mac-023
-mac 23 down          # Shutdown mac-023
-mac 23 sleep         # Sleep mac-023
-mac 23               # SSH into mac-023 directly
-
-mac-all status       # Check all machines (parallel)
-mac-all reboot       # Reboot all machines
-mac-all down         # Shutdown all machines
-```
-
-### User Management
-
-```fish
-mac-user-create 23 student pass123              # Standard user
-mac-user-create-admin 23 labadmin securepass     # Admin user
-mac-user-list 23                                 # List all users
-mac-user-delete 23 student                       # Delete (secure wipe)
-
-mac-all-user-create student pass123              # Create on ALL
-mac-all-user-delete student                      # Delete from ALL
-mac-all-user-list                                # List on ALL
-```
-
-### Software Installation
-
-```fish
-mac-pkg 23 cask firefox                  # Install app on one machine
-mac-pkg-all cask visual-studio-code      # Install on all machines
-mac-pkg 23 formula git                   # Install CLI tool
-mac-pkg-remove 23 cask firefox           # Remove from one
-mac-pkg-remove-all cask firefox          # Remove from all
-```
-
-### Homebrew Management
-
-```fish
-mac-brew-install 23       # Install Homebrew on one machine
-mac-brew-check-all        # Check status across the lab
-mac-brew-install-all      # Install on all machines
-```
-
-### Auto-Login
-
-```fish
-mac-autologin-on 23 password        # Enable
-mac-autologin-off 23                # Disable
-mac-autologin-status 23             # Check
-
-mac-all-autologin-on password       # Enable lab-wide
-mac-all-autologin-off               # Disable lab-wide
-mac-all-autologin-status            # Check lab-wide
-```
-
-### Screen Monitoring and Presentation
-
-```fish
-mac-monitor 23              # View a student's screen
-mac-present                 # Push YOUR screen to all students
-mac-present-host 23         # Push to one student
-mac-stop-present            # Stop presentation
-mac-stop-present-host 23    # Stop on one machine
-
-mac-screen-setup 23         # One-time setup
-mac-all-screen-setup        # Setup all machines
-mac-screen-fix 23           # Fix screen sharing issues
-```
-
-### Notifications and Alerts
-
-```fish
-mac-notify 23 "Please save your work"       # Silent notification
-mac-all-notify "Lab closing in 10 minutes"  # Notify all
-
-mac-alert 23 "Submit your work now"         # Notification + sound
-mac-all-alert "Time is up!"                 # Alert all
-```
-
-### Network and Wake-on-LAN
-
-```fish
-mac-scrape-inventory     # Scrape IP/MAC addresses from all machines
-mac-wake 23              # Wake a sleeping/off machine
-mac-all-wake             # Wake the entire lab
-mac-wol-setup 23         # Enable Wake-on-LAN on a machine
-mac-all-wol-setup        # Enable on all machines
-```
-
-### Emergency
-
-```fish
-mac-kill-all             # Kill all hanging SSH/brew processes
-```
-
----
-
-## Architecture
+## Project structure
 
 ```
 labctl/
-├── fish/
-│   ├── init.fish                    # Entry point — loads all modules
-│   └── modules/
-│       ├── config.fish              # Lab configuration (user, domain)
-│       ├── hostnames.fish           # Machine inventory list
-│       ├── power-management.fish    # SSH, status, reboot, shutdown, sleep
-│       ├── users.fish               # User create, delete, list
-│       ├── software.fish            # Package install/remove via Homebrew
-│       ├── brew-management.fish     # Homebrew itself (install/check/uninstall)
-│       ├── autologin.fish           # Auto-login enable/disable/status
-│       ├── screens.fish             # Screen monitoring and presentation mode
-│       ├── notify.fish              # Desktop notifications and audio alerts
-│       ├── network.fish             # IP/MAC scraping, Wake-on-LAN
-│       ├── admin.fish               # Passwordless sudo setup
-│       └── emergency.fish           # Kill hanging processes
-├── docs/
-├── assets/
-├── LICENSE
-└── README.md
+└── fish/
+    ├── init.fish               # Loads everything
+    └── modules/
+        ├── config.fish         # Lab user and domain
+        ├── hostnames.fish      # List of machine names
+        ├── power-management.fish
+        ├── users.fish
+        ├── software.fish
+        ├── brew-management.fish
+        ├── autologin.fish
+        ├── screens.fish
+        ├── notify.fish
+        ├── network.fish
+        ├── admin.fish
+        └── emergency.fish
 ```
-
-### Design Principles
-
-1. **Single then All** — Every command works on one machine first, then has an `all` variant for lab-wide execution
-2. **Parallel Execution** — Lab-wide commands run in parallel using background processes and `wait`
-3. **No Agents** — Uses only SSH. Nothing to install on client machines
-4. **No Cloud** — Runs entirely on your local network using mDNS (`.local`)
-5. **Safe Passwords** — Passwords are base64-encoded for safe transport over SSH
-6. **Validation First** — Dangerous operations (like sudoers changes) validate before applying
 
 ---
 
-## Companion Tools
+## GUI version
 
-labctl is the CLI engine. For a GUI experience, check out:
-
-- [Mac Lab Dashboard](https://github.com/iampownkumar/mac-os-monitering) — Flutter desktop app + FastAPI backend that provides a visual dashboard for all labctl operations
+If you prefer a point-and-click interface, check out [mac-lab-dashboard](https://github.com/korelium-oss/mac-lab-dashboard) — a Flutter desktop app that wraps labctl into a proper UI.
 
 ---
 
 ## License
 
-Copyright 2026 Pownkumar A (Founder of Korelium)
-
-Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for details.
-
-For commercial licensing inquiries, contact Pownkumar A at [Korelium](https://korelium.org).
-
+MIT License. See [LICENSE](LICENSE) for details.
